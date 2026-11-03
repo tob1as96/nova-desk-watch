@@ -1,0 +1,8 @@
+# nikdy necommitovat tajemství
+TOPIC*
+PRIVATE-LINK*
+*.key
+*.pem
+.env*
+*.log
+state.json

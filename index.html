@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src https://ntfy.sh; img-src 'self' data:; manifest-src 'self' blob:; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07090e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="NOVA desk">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>NOVA desk · sledování</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="notopic" hidden><div class="big2">📈</div><div>Otevři NOVA desk přes svůj soukromý odkaz.</div></div>
+<div class="wrap" id="app">
+<header>
+  <h1>NOVA · Desk <small>všechno z localhostu, jen sledování</small></h1>
+  <div><span class="pill badge">JEN SLEDOVÁNÍ</span> <span class="pill bad">LIVE natvrdo vypnutý</span> <span class="pill">PAPER</span> <span class="pill" id="hdrline" hidden></span></div>
+</header>
+<div id="fresh" class="fresh warn">načítám…</div>
+<nav>
+  <button id="nav-knihy" class="on">Knihy</button><button id="nav-desk">Desk</button><button id="nav-perp">Perp</button><button id="nav-ultron">Ultron</button><button id="nav-system">Systém</button>
+</nav>
+<section id="tab-knihy">
+  <div id="src" class="src">čekám na data z boxu…</div>
+  <div id="sys"></div>
+  <div id="sum" class="sum"></div>
+  <div id="books"></div>
+  <p class="note" id="legend"></p>
+</section>
+<section id="tab-desk" hidden><div id="deskbody"><p class="note">čekám na data z boxu…</p></div></section>
+<section id="tab-perp" hidden><div id="perpbody"><p class="note">čekám na data z boxu…</p></div></section>
+<section id="tab-ultron" hidden><div id="ultronbody"><p class="note">čekám na data z boxu…</p></div></section>
+<section id="tab-system" hidden><div id="systembody"><p class="note">čekám na data z boxu…</p></div></section>
+<p class="foot" style="margin-top:24px">Čas: Europe/Prague. Kopie stavu z boxu (snímek se posílá při změně a při heartbeatu), žádné ovládání, žádný zápis zpět do desku.</p>
+</div>
+<button id="forgetbtn" title="Nastavení">⚙</button>
+<div id="forgetpanel" hidden><div>Na tomto zařízení zapomene soukromý kanál. Znovu ho otevřeš jen přes svůj soukromý odkaz.</div><button id="forgetgo">Zapomenout kanál</button></div>
+<script src="app.js"></script>
+</body>
+</html>
