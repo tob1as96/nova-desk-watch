@@ -283,6 +283,28 @@ function spark(c) {
 function seatsHtml(se) {
   return '<div class="gates">' + ["strategist", "risk", "ticket", "fill"].map(function (k) { var x = (se || {})[k] || {}; return '<div class="gate ' + (x.state === "error" ? "no" : "ok") + '"><b>' + esc(k) + " · " + esc(x.state || "—") + "</b><small>" + esc(x.msg || "") + "</small></div>"; }).join("") + "</div>";
 }
+
+/* ===== dlouhý replay (jen čtení) ===== */
+function lrBadge(d) { return '<span class="pill ' + (d === "KEEP" ? "good" : "bad") + '">' + esc(d || "—") + "</span>"; }
+function lrCI(c) { return c ? num(c[0], 3) + " … " + num(c[1], 3) : "—"; }
+function lrDate(t) { return t ? new Date(t * 1000).toLocaleDateString("cs-CZ", { timeZone: "Europe/Prague" }) : "—"; }
+function longHTML(lr, kind) {
+  if (!lr) return '<h2>📚 Dlouhý replay</h2><p class="note">počítá se…</p>';
+  var x = "", c = lr.coverage || {};
+  if (kind === "hd") {
+    x += '<h2>📚 Dlouhý replay (max historie, jen krypto)</h2><p class="note">' + (c.pairs || 0) + " krypto párů od " + lrDate(c.firstBar) + " · likvidita v čase · vstup na open další svíčky · gap stopy · funding podle skutečného intervalu · portfolio max 8 pozic, 1 na coin · " + (c.tradfiExcluded || 0) + " akcií/komodit vyřazeno</p>";
+    x += "<div class='box tbl'><table><tr><th>strategie</th><th>n</th><th>čistý</th><th>95% CI Ø</th><th>Sharpe</th><th>max DD</th><th>coin flip</th><th>§8</th></tr>";
+    Object.keys(lr.strategies || {}).forEach(function (k) { var s = lr.strategies[k] || {}, g = s.gate || {}; x += "<tr><td>" + esc(k) + "</td><td>" + (s.n || 0) + "</td><td>" + usd(s.net) + "</td><td>" + lrCI(s.ci) + "</td><td>" + num(s.sharpe) + "</td><td>" + pct((s.maxDD || 0) * 100) + "</td><td>" + usd((s.coinflip || {}).net) + "</td><td>" + lrBadge(g.decision) + "</td></tr>"; });
+    return x + "</table></div>";
+  }
+  var L1 = (lr.lags || {})["1"] || {}, gs = lr.gates || {};
+  x += '<h2>📚 Dlouhý replay</h2><p class="note">' + (c.rows || 0) + " krypto Up/Down trhů (" + esc((c.assets || []).join(", ")) + ") · " + lrDate(c.from) + " – " + lrDate(c.to) + " · on-chain obchody · vypořádání podle skutečného rozhodnutí · dnešní poplatky · základ = zpoždění kotace 1 min</p>";
+  x += "<div class='box tbl'><table><tr><th>strategie</th><th>n</th><th>čistý</th><th>95% CI Ø</th><th>§8</th><th>0 min</th><th>2 min</th></tr>";
+  Object.keys(gs).forEach(function (k) { var s = k === "FAIRCAL" ? lr.faircal : L1[k]; s = s || {}; var l0 = ((lr.lags || {})["0"] || {})[k] || {}, l2 = ((lr.lags || {})["2"] || {})[k] || {};
+    x += "<tr><td>" + esc(k) + "</td><td>" + (s.n || 0) + "</td><td>" + usd(s.net) + "</td><td>" + lrCI(s.ci) + "</td><td>" + lrBadge((gs[k].edge || {}).decision) + "</td><td>" + (l0.n ? usd(l0.net) : "—") + "</td><td>" + (l2.n ? usd(l2.net) : "—") + "</td></tr>"; });
+  var cf = L1.coinflip || {}; x += "<tr><td>coin flip</td><td>" + (cf.n || 0) + "</td><td>" + usd(cf.net) + "</td><td>" + lrCI(cf.ci) + "</td><td>—</td><td></td><td></td></tr>";
+  return x + "</table></div>";
+}
 function renderHD(h) {
   if (!h) { $("hdbody").innerHTML = '<p class="note">zatím bez dat (Hyperion · HyperDesk na boxu neběží nebo ještě nic neposlal)</p>'; return; }
   var f = h.forward || {}, x = botHead("hyperion", "Hyperion", "HyperDesk");
@@ -296,7 +318,7 @@ function renderHD(h) {
   if (rk.length) x += "<h2>Replay " + esc(h.replayDays) + " d · " + esc((h.replayCoverage || {}).pairs) + " párů</h2><div class='box tbl'><table><tr><th>strategie</th><th>n</th><th>čistý ($100/obchod)</th><th>win</th><th>Sharpe</th><th>max DD</th><th>PF</th><th>edge</th></tr>" + rk.map(function (k) { var s = r[k]; return "<tr><td>" + esc(k) + "</td><td>" + s.n + "</td><td>" + usd(s.net) + "</td><td>" + (s.winRate != null ? pct(s.winRate * 100) : "—") + "</td><td>" + num(s.sharpe) + "</td><td>" + (s.maxDD != null ? pct(s.maxDD * 100) : "—") + "</td><td>" + num(s.profitFactor) + "</td><td>" + num(s.edgeRatio) + "</td></tr>"; }).join("") + "</table></div>";
   else x += '<p class="note">replay se ještě počítá</p>';
   x += "<h2>Pokrytí dat</h2><div class='box'>" + Object.keys(h.coverage || {}).map(function (k) { var c = h.coverage[k]; return row(esc(k), c.ok ? c.liquid + " likvidních z " + c.listed : '<span class="zero">' + esc(c.err || "nedostupné") + "</span>"); }).join("") + "</div>";
-  $("hdbody").innerHTML = x;
+  $("hdbody").innerHTML = x + longHTML(h.longReplay, "hd");
 }
 function renderPP(p) {
   if (!p) { $("ppbody").innerHTML = '<p class="note">zatím bez dat (Valora · PolyProfile na boxu neběží nebo ještě nic neposlal)</p>'; return; }
@@ -305,14 +327,14 @@ function renderPP(p) {
   x += '<div class="sum"><div class="box"><h3>Equity (paper, VP+Fair)</h3><div class="big">' + usdPlain(p.equity) + '</div><div class="note">start $' + p.start + " · sázka $" + p.stake + "/obchod</div>" + spark(p.curve) + "</div>";
   [["VP", p.relearnVP], ["Fair", p.relearnFair]].forEach(function (a) { var r = a[1] || {}, l = r.last || {}; x += '<div class="box"><h3>Přeučování ' + a[0] + "</h3>" + row("stav", esc(r.phase === "relearning" ? "Přeučuji minulé obchody… aktualizuji prahy" : r.message || "—")) + row("aktivní", esc(JSON.stringify(r.active || {}))) + row("hash", esc(r.hash || "—")) + row("stín", r.shadow ? esc(JSON.stringify(r.shadow)) : "žádný") + row("poslední", l.decision ? esc(l.decision) + " · " + fmtS(l.ts) : "—") + (l.reason ? '<div class="hint">' + esc(l.reason) + "</div>" : "") + "</div>"; });
   x += "</div>";
-  x += "<h2>Strategie vs. baseline</h2><div class='box tbl'><table><tr><th>zdroj</th><th>kniha</th><th>n</th><th>čistý</th><th>win</th><th>95% CI Ø</th></tr>";
+  x += "<h2>Strategie vs. baseline (krátký replay 48 h = nevypovídající)</h2><div class='box tbl'><table><tr><th>zdroj</th><th>kniha</th><th>n</th><th>čistý</th><th>win</th><th>95% CI Ø</th></tr>";
   ["forward", "replay"].forEach(function (src) { var c = (p.comparison || {})[src] || {}; Object.keys(names).forEach(function (k) { var s = c[k] || {}; x += "<tr><td>" + src + "</td><td>" + names[k] + "</td><td>" + (s.n || 0) + "</td><td>" + (s.n ? usd(s.net) : "—") + "</td><td>" + (s.n ? pct(s.winRate * 100) : "—") + "</td><td>" + (s.ci ? num(s.ci[0], 3) + " … " + num(s.ci[1], 3) : "—") + "</td></tr>"; }); });
   x += "</table></div>";
   x += "<h2>Otevřené paper sázky (" + (p.open || []).length + ")</h2><div class='box tbl'>" + ((p.open || []).length ? "<table><tr><th>trh</th><th>strategie</th><th>strana</th><th>cena</th><th>konec</th></tr>" + p.open.map(function (f) { return "<tr><td>" + esc(f.asset) + " " + esc(f.tf) + "</td><td>" + (f.book === "fair" ? "Fair" : "VP") + "</td><td>" + esc(f.side) + "</td><td>" + num(f.px * 100, 1) + " ¢</td><td>" + fmtS(f.end) + "</td></tr>"; }).join("") + "</table>" : '<p class="note">žádné</p>') + "</div>";
   x += "<h2>Poslední filly</h2><div class='box tbl'>" + ((p.fills || []).length ? "<table><tr><th>čas</th><th>trh</th><th>str.</th><th>strana</th><th>cena</th><th>výsledek</th></tr>" + p.fills.map(function (f) { return "<tr><td>" + fmtS(f.ts) + "</td><td>" + esc(f.asset) + " " + esc(f.tf) + "</td><td>" + (f.book === "fair" ? "Fair" : "VP") + "</td><td>" + esc(f.side) + "</td><td>" + num(f.px * 100, 1) + " ¢</td><td>" + (f.result == null ? "čeká" : usd(f.result)) + "</td></tr>"; }).join("") + "</table>" : '<p class="note">zatím žádné</p>') + "</div>";
   x += "<h2>Aktivní trhy (" + (cv.activeMarkets || 0) + ")</h2><div class='box tbl'><table><tr><th>trh</th><th>zóna</th><th>Up ask</th><th>Down ask</th><th>konec</th></tr>" + (p.markets || []).map(function (m) { return "<tr><td>" + esc(m.asset) + " " + esc(m.tf) + "</td><td>" + esc(m.zone || "—") + "</td><td>" + (m.upAsk != null ? num(m.upAsk * 100, 1) + " ¢" : "—") + "</td><td>" + (m.downAsk != null ? num(m.downAsk * 100, 1) + " ¢" : "—") + "</td><td>" + fmtS(m.end) + "</td></tr>"; }).join("") + "</table></div>";
   x += "<h2>Pokrytí dat</h2><div class='box'>" + row("aktiva", esc((cv.assets || []).join(", "))) + row("timeframy", esc(Object.keys(cv.byTf || {}).map(function (k) { return k + " " + cv.byTf[k]; }).join(" · "))) + row("deník forward / replay", (cv.rowsForward || 0) + " / " + (cv.rowsReplay || 0)) + row("replay", esc(rp.state) + (rp.total ? " " + rp.done + "/" + rp.total : "")) + "</div>";
-  $("ppbody").innerHTML = x;
+  $("ppbody").innerHTML = x + longHTML(p.longReplay, "poly");
 }
 
 
@@ -322,14 +344,14 @@ function renderAP(p) {
   x += '<div class="sum"><div class="box"><h3>Equity (paper Adaptive)</h3><div class="big">' + usdPlain(p.equity) + '</div><div class="note">start $' + p.start + " · sázka $" + p.stake + "/obchod</div>" + spark(p.curve) + "</div>";
   x += '<div class="box"><h3>Přeučování Adaptive</h3>' + row("stav", esc(rl.phase === "relearning" ? "Přeučuji…" : rl.message || "—")) + row("aktivní", esc(JSON.stringify(rl.active || {}))) + row("hash", esc(rl.hash || "—")) + row("poslední", l.decision ? esc(l.decision) + " · " + fmtS(l.ts) : "—") + (l.reason ? '<div class="hint">' + esc(l.reason) + "</div>" : "") + "</div>";
   x += '<div class="box"><h3>Bayes top</h3>' + ((p.bayes || []).slice(0, 6).map(function (b) { return row(esc(b.key), pct((b.mean || 0) * 100) + " · n≈" + num(b.n, 0)); }).join("") || '<p class="note">prior</p>') + "</div></div>";
-  x += "<h2>Strategie vs. baseline</h2><div class='box tbl'><table><tr><th>zdroj</th><th>kniha</th><th>n</th><th>čistý</th><th>win</th></tr>";
+  x += "<h2>Strategie vs. baseline (krátký replay 48 h = nevypovídající)</h2><div class='box tbl'><table><tr><th>zdroj</th><th>kniha</th><th>n</th><th>čistý</th><th>win</th></tr>";
   var names = { adaptive: "Adaptive Bayes", MOM: "MOM", MR: "MR", FAIR: "FAIR", VP: "VP", coinflip: "coin flip" };
   ["forward", "replay"].forEach(function (src) { var c = (p.comparison || {})[src] || {}; Object.keys(names).forEach(function (k) { var s = c[k] || {}; x += "<tr><td>" + src + "</td><td>" + names[k] + "</td><td>" + (s.n || 0) + "</td><td>" + (s.n ? usd(s.net) : "—") + "</td><td>" + (s.n ? pct(s.winRate * 100) : "—") + "</td></tr>"; }); });
   x += "</table></div>";
   x += "<h2>Otevřené (" + (p.open || []).length + ")</h2><div class='box tbl'>" + ((p.open || []).length ? "<table><tr><th>trh</th><th>strat</th><th>strana</th><th>cena</th><th>konec</th></tr>" + p.open.map(function (f) { return "<tr><td>" + esc(f.asset) + " " + esc(f.tf) + "</td><td>" + esc(f.strategy) + "</td><td>" + esc(f.side) + "</td><td>" + num(f.px * 100, 1) + " ¢</td><td>" + fmtS(f.end) + "</td></tr>"; }).join("") + "</table>" : '<p class="note">žádné</p>') + "</div>";
   x += "<h2>Filly</h2><div class='box tbl'>" + ((p.fills || []).length ? "<table><tr><th>čas</th><th>trh</th><th>strat</th><th>strana</th><th>cena</th><th>výsledek</th></tr>" + p.fills.map(function (f) { return "<tr><td>" + fmtS(f.ts) + "</td><td>" + esc(f.asset) + " " + esc(f.tf) + "</td><td>" + esc(f.strategy) + "</td><td>" + esc(f.side) + "</td><td>" + num(f.px * 100, 1) + " ¢</td><td>" + (f.result == null ? "čeká" : usd(f.result)) + "</td></tr>"; }).join("") + "</table>" : '<p class="note">zatím žádné</p>') + "</div>";
   x += "<h2>Pokrytí</h2><div class='box'>" + row("aktiva", esc((cv.assets || []).join(", "))) + row("timeframy", esc(Object.keys(cv.byTf || {}).map(function (k) { return k + " " + cv.byTf[k]; }).join(" · "))) + row("deník f/r", (cv.rowsForward || 0) + " / " + (cv.rowsReplay || 0)) + row("replay", esc(rp.state) + (rp.total ? " " + rp.done + "/" + rp.total : "")) + "</div>";
-  $("apbody").innerHTML = x;
+  $("apbody").innerHTML = x + longHTML(p.longReplay, "poly");
 }
 
 /* ===== vykreslení snímku ===== */
