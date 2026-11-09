@@ -170,7 +170,7 @@ var barW = function (p) { return Math.max(0, Math.min(100, p || 0)); };
 
 /* ===== záložky ===== */
 var data = null, lastMsgAt = 0, hbSec = 600, deskOk = true, loadedAttach = "", curTab = "knihy";
-var TABS = ["knihy", "desk", "perp", "ultron", "system", "hyperdesk", "polyprofile"];
+var TABS = ["knihy", "desk", "perp", "ultron", "system", "hyperdesk", "polyprofile", "adaptivepoly"];
 function showTab(t) { curTab = t; TABS.forEach(function (x) { $("tab-" + x).hidden = x !== t; $("nav-" + x).classList.toggle("on", x === t); }); try { sessionStorage.setItem("nd_tab", t); } catch (e) {} }
 TABS.forEach(function (t) { $("nav-" + t).onclick = function () { showTab(t); }; });
 try { var st0 = sessionStorage.getItem("nd_tab"); if (st0 && TABS.indexOf(st0) >= 0) curTab = st0; } catch (e) {}
@@ -267,7 +267,7 @@ function renderSystem(sy, rd) {
   $("systembody").innerHTML = h || '<p class="note">zatím bez dat</p>';
 }
 
-/* ===== TRADING BOTI (NOVA HyperDesk + NOVA PolyProfile) — jen sledování, žádná tlačítka ===== */
+/* ===== TRADING BOTI (HyperDesk + PolyProfile + AdaptivePoly) — jen sledování ===== */
 var fmtS = function (s) { return s ? fmtMs(s * 1000) : "—"; };
 var badges = '<div class="src"><span class="pill">PAPER</span> <span class="pill bad">LIVE natvrdo vypnutý</span> <span class="pill">jen sledování · schvalování jen na boxu</span></div>';
 function spark(c) {
@@ -311,6 +311,23 @@ function renderPP(p) {
   $("ppbody").innerHTML = x;
 }
 
+
+function renderAP(p) {
+  if (!p) { $("apbody").innerHTML = '<p class="note">zatím bez dat (AdaptivePoly na boxu neběží nebo ještě nic neposlal)</p>'; return; }
+  var x = badges, cv = p.coverage || {}, rp = p.replay || {}, rl = p.relearn || {}, l = rl.last || {};
+  x += '<div class="sum"><div class="box"><h3>Equity (paper Adaptive)</h3><div class="big">' + usdPlain(p.equity) + '</div><div class="note">start $' + p.start + " · sázka $" + p.stake + "/obchod</div>" + spark(p.curve) + "</div>";
+  x += '<div class="box"><h3>Přeučování Adaptive</h3>' + row("stav", esc(rl.phase === "relearning" ? "Přeučuji…" : rl.message || "—")) + row("aktivní", esc(JSON.stringify(rl.active || {}))) + row("hash", esc(rl.hash || "—")) + row("poslední", l.decision ? esc(l.decision) + " · " + fmtS(l.ts) : "—") + (l.reason ? '<div class="hint">' + esc(l.reason) + "</div>" : "") + "</div>";
+  x += '<div class="box"><h3>Bayes top</h3>' + ((p.bayes || []).slice(0, 6).map(function (b) { return row(esc(b.key), pct((b.mean || 0) * 100) + " · n≈" + num(b.n, 0)); }).join("") || '<p class="note">prior</p>') + "</div></div>";
+  x += "<h2>Strategie vs. baseline</h2><div class='box tbl'><table><tr><th>zdroj</th><th>kniha</th><th>n</th><th>čistý</th><th>win</th></tr>";
+  var names = { adaptive: "Adaptive Bayes", MOM: "MOM", MR: "MR", FAIR: "FAIR", VP: "VP", coinflip: "coin flip" };
+  ["forward", "replay"].forEach(function (src) { var c = (p.comparison || {})[src] || {}; Object.keys(names).forEach(function (k) { var s = c[k] || {}; x += "<tr><td>" + src + "</td><td>" + names[k] + "</td><td>" + (s.n || 0) + "</td><td>" + (s.n ? usd(s.net) : "—") + "</td><td>" + (s.n ? pct(s.winRate * 100) : "—") + "</td></tr>"; }); });
+  x += "</table></div>";
+  x += "<h2>Otevřené (" + (p.open || []).length + ")</h2><div class='box tbl'>" + ((p.open || []).length ? "<table><tr><th>trh</th><th>strat</th><th>strana</th><th>cena</th><th>konec</th></tr>" + p.open.map(function (f) { return "<tr><td>" + esc(f.asset) + " " + esc(f.tf) + "</td><td>" + esc(f.strategy) + "</td><td>" + esc(f.side) + "</td><td>" + num(f.px * 100, 1) + " ¢</td><td>" + fmtS(f.end) + "</td></tr>"; }).join("") + "</table>" : '<p class="note">žádné</p>') + "</div>";
+  x += "<h2>Filly</h2><div class='box tbl'>" + ((p.fills || []).length ? "<table><tr><th>čas</th><th>trh</th><th>strat</th><th>strana</th><th>cena</th><th>výsledek</th></tr>" + p.fills.map(function (f) { return "<tr><td>" + fmtS(f.ts) + "</td><td>" + esc(f.asset) + " " + esc(f.tf) + "</td><td>" + esc(f.strategy) + "</td><td>" + esc(f.side) + "</td><td>" + num(f.px * 100, 1) + " ¢</td><td>" + (f.result == null ? "čeká" : usd(f.result)) + "</td></tr>"; }).join("") + "</table>" : '<p class="note">zatím žádné</p>') + "</div>";
+  x += "<h2>Pokrytí</h2><div class='box'>" + row("aktiva", esc((cv.assets || []).join(", "))) + row("timeframy", esc(Object.keys(cv.byTf || {}).map(function (k) { return k + " " + cv.byTf[k]; }).join(" · "))) + row("deník f/r", (cv.rowsForward || 0) + " / " + (cv.rowsReplay || 0)) + row("replay", esc(rp.state) + (rp.total ? " " + rp.done + "/" + rp.total : "")) + "</div>";
+  $("apbody").innerHTML = x;
+}
+
 /* ===== vykreslení snímku ===== */
 function renderAll() {
   if (!data) return;
@@ -321,6 +338,7 @@ function renderAll() {
   try { renderSystem(data.system, data.readiness); } catch (e) { $("systembody").textContent = "chyba vykreslení"; }
   try { renderHD((data.bots || {}).hyperdesk); } catch (e) { $("hdbody").textContent = "chyba vykreslení"; }
   try { renderPP((data.bots || {}).polyprofile); } catch (e) { $("ppbody").textContent = "chyba vykreslení"; }
+  try { renderAP((data.bots || {}).adaptivepoly); } catch (e) { $("apbody").textContent = "chyba vykreslení"; }
   var b2 = data.books, s = $("src"); if (b2 && b2.tracker) { s.className = "src"; s.innerHTML = '<span class="pill acc">SNÍMEK z boxu</span> <span>tracker BTC kontroly k <b>' + fmtT(b2.tracker.updatedAt) + "</b> · BTC <b>" + (b2.tracker.btcPrice != null ? "$" + Math.round(b2.tracker.btcPrice).toLocaleString("cs-CZ") : "—") + "</b> (" + esc(b2.tracker.btcSource || "—") + ")</span>"; }
   var i = data.info; $("hdrline").textContent = i && i.live ? "LIVE: " + i.live : "";
 }
