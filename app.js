@@ -170,7 +170,7 @@ var barW = function (p) { return Math.max(0, Math.min(100, p || 0)); };
 
 /* ===== záložky ===== */
 var data = null, lastMsgAt = 0, hbSec = 600, deskOk = true, loadedAttach = "", curTab = "knihy";
-var TABS = ["knihy", "desk", "perp", "ultron", "system"];
+var TABS = ["knihy", "desk", "perp", "ultron", "system", "hyperdesk", "polyprofile"];
 function showTab(t) { curTab = t; TABS.forEach(function (x) { $("tab-" + x).hidden = x !== t; $("nav-" + x).classList.toggle("on", x === t); }); try { sessionStorage.setItem("nd_tab", t); } catch (e) {} }
 TABS.forEach(function (t) { $("nav-" + t).onclick = function () { showTab(t); }; });
 try { var st0 = sessionStorage.getItem("nd_tab"); if (st0 && TABS.indexOf(st0) >= 0) curTab = st0; } catch (e) {}
@@ -267,6 +267,50 @@ function renderSystem(sy, rd) {
   $("systembody").innerHTML = h || '<p class="note">zatím bez dat</p>';
 }
 
+/* ===== TRADING BOTI (NOVA HyperDesk + NOVA PolyProfile) — jen sledování, žádná tlačítka ===== */
+var fmtS = function (s) { return s ? fmtMs(s * 1000) : "—"; };
+var badges = '<div class="src"><span class="pill">PAPER</span> <span class="pill bad">LIVE natvrdo vypnutý</span> <span class="pill">jen sledování · schvalování jen na boxu</span></div>';
+function spark(c) {
+  if (!c || c.length < 2) return '<div class="note">křivka se teprve plní</div>';
+  var v = c.map(function (x) { return x[1]; }), mn = Math.min.apply(null, v), mx = Math.max.apply(null, v), W = 300, H = 60;
+  var pts = v.map(function (y, i) { return (i / (v.length - 1) * W).toFixed(1) + "," + (H - (mx === mn ? H / 2 : (y - mn) / (mx - mn) * H)).toFixed(1); }).join(" ");
+  return '<svg viewBox="0 0 ' + W + " " + H + '" style="width:100%;height:60px"><polyline fill="none" stroke="currentColor" stroke-width="2" points="' + pts + '"/></svg>';
+}
+function seatsHtml(se) {
+  return '<div class="gates">' + ["strategist", "risk", "ticket", "fill"].map(function (k) { var x = (se || {})[k] || {}; return '<div class="gate ' + (x.state === "error" ? "no" : "ok") + '"><b>' + esc(k) + " · " + esc(x.state || "—") + "</b><small>" + esc(x.msg || "") + "</small></div>"; }).join("") + "</div>";
+}
+function renderHD(h) {
+  if (!h) { $("hdbody").innerHTML = '<p class="note">zatím bez dat (HyperDesk na boxu neběží nebo ještě nic neposlal)</p>'; return; }
+  var f = h.forward || {}, x = "";
+  x += badges + '<div class="sum"><div class="box"><h3>Equity (paper)</h3><div class="big">' + usdPlain(h.equity) + '</div><div class="note">start $' + h.start + " · realizováno " + usd(h.realized) + " · otevřeno " + usd(h.unrealized) + "</div>" + spark(h.curve) + "</div>" +
+    '<div class="box"><h3>Dnes a risk</h3>' + row("dnes", usd(h.dayPnl)) + row("auto-paper", h.autoPaper ? "zapnuto" : "vypnuto (čeká na Schválit)") + row("kill switch", h.killed ? '<span class="neg">AKTIVNÍ</span>' : "ne") + row("universe", esc(h.universe) + " párů") + "</div>" +
+    '<div class="box"><h3>Forward paper</h3>' + row("obchody", f.n || 0) + row("čistý", usd(f.net)) + row("win", f.winRate != null ? pct(f.winRate * 100) : "—") + row("Sharpe", num(f.sharpe)) + row("max DD", f.maxDD != null ? pct(f.maxDD * 100) : "—") + row("edge ratio", num(f.edgeRatio)) + row("poplatky", usdPlain(f.fees)) + "</div></div>";
+  x += "<h2>Pipeline</h2>" + seatsHtml(h.seats);
+  x += "<h2>Otevřené paper pozice (" + (h.open || []).length + ")</h2><div class='box tbl'>" + ((h.open || []).length ? "<table><tr><th>id</th><th>mince</th><th>strana</th><th>strat.</th><th>vstup</th><th>teď</th><th>stop</th><th>pnl</th></tr>" + h.open.map(function (p) { return "<tr><td>" + esc(p.id) + "</td><td>" + esc(p.base) + " " + esc(p.venue) + "</td><td>" + esc(p.side) + "</td><td>" + esc(p.strategy) + "</td><td>" + num(p.entryPx, 4) + "</td><td>" + num(p.px, 4) + "</td><td>" + num(p.stop, 4) + "</td><td>" + usd(p.upnl) + "</td></tr>"; }).join("") + "</table>" : '<p class="note">žádné</p>') + "</div>";
+  x += "<h2>Poslední tikety</h2><div class='box tbl'>" + ((h.tickets || []).length ? "<table><tr><th>id</th><th>mince</th><th>strana</th><th>strat.</th><th>stav</th><th>čas</th></tr>" + h.tickets.map(function (t) { return "<tr><td>" + esc(t.id) + "</td><td>" + esc(t.base) + " " + esc(t.venue) + "</td><td>" + esc(t.side) + "</td><td>" + esc(t.strategy) + "</td><td>" + esc(t.status) + "</td><td>" + fmtS(t.ts) + "</td></tr>"; }).join("") + "</table>" : '<p class="note">žádné</p>') + "</div>";
+  var r = h.replay || {}, rk = Object.keys(r);
+  if (rk.length) x += "<h2>Replay " + esc(h.replayDays) + " d · " + esc((h.replayCoverage || {}).pairs) + " párů</h2><div class='box tbl'><table><tr><th>strategie</th><th>n</th><th>čistý ($100/obchod)</th><th>win</th><th>Sharpe</th><th>max DD</th><th>PF</th><th>edge</th></tr>" + rk.map(function (k) { var s = r[k]; return "<tr><td>" + esc(k) + "</td><td>" + s.n + "</td><td>" + usd(s.net) + "</td><td>" + (s.winRate != null ? pct(s.winRate * 100) : "—") + "</td><td>" + num(s.sharpe) + "</td><td>" + (s.maxDD != null ? pct(s.maxDD * 100) : "—") + "</td><td>" + num(s.profitFactor) + "</td><td>" + num(s.edgeRatio) + "</td></tr>"; }).join("") + "</table></div>";
+  else x += '<p class="note">replay se ještě počítá</p>';
+  x += "<h2>Pokrytí dat</h2><div class='box'>" + Object.keys(h.coverage || {}).map(function (k) { var c = h.coverage[k]; return row(esc(k), c.ok ? c.liquid + " likvidních z " + c.listed : '<span class="zero">' + esc(c.err || "nedostupné") + "</span>"); }).join("") + "</div>";
+  $("hdbody").innerHTML = x;
+}
+function renderPP(p) {
+  if (!p) { $("ppbody").innerHTML = '<p class="note">zatím bez dat (PolyProfile na boxu neběží nebo ještě nic neposlal)</p>'; return; }
+  var x = badges, cv = p.coverage || {}, rp = p.replay || {};
+  var names = { strategy: "VP-hold (ask+poplatek)", fair: "Fair BS/TWAP (ask+poplatek)", strategyAtMid: "VP @mid bez nákladů", coinflip: "coin flip", alwaysMid: "always-mid Up" };
+  x += '<div class="sum"><div class="box"><h3>Equity (paper, VP+Fair)</h3><div class="big">' + usdPlain(p.equity) + '</div><div class="note">start $' + p.start + " · sázka $" + p.stake + "/obchod</div>" + spark(p.curve) + "</div>";
+  [["VP", p.relearnVP], ["Fair", p.relearnFair]].forEach(function (a) { var r = a[1] || {}, l = r.last || {}; x += '<div class="box"><h3>Přeučování ' + a[0] + "</h3>" + row("stav", esc(r.phase === "relearning" ? "Přeučuji minulé obchody… aktualizuji prahy" : r.message || "—")) + row("aktivní", esc(JSON.stringify(r.active || {}))) + row("hash", esc(r.hash || "—")) + row("stín", r.shadow ? esc(JSON.stringify(r.shadow)) : "žádný") + row("poslední", l.decision ? esc(l.decision) + " · " + fmtS(l.ts) : "—") + (l.reason ? '<div class="hint">' + esc(l.reason) + "</div>" : "") + "</div>"; });
+  x += "</div>";
+  x += "<h2>Strategie vs. baseline</h2><div class='box tbl'><table><tr><th>zdroj</th><th>kniha</th><th>n</th><th>čistý</th><th>win</th><th>95% CI Ø</th></tr>";
+  ["forward", "replay"].forEach(function (src) { var c = (p.comparison || {})[src] || {}; Object.keys(names).forEach(function (k) { var s = c[k] || {}; x += "<tr><td>" + src + "</td><td>" + names[k] + "</td><td>" + (s.n || 0) + "</td><td>" + (s.n ? usd(s.net) : "—") + "</td><td>" + (s.n ? pct(s.winRate * 100) : "—") + "</td><td>" + (s.ci ? num(s.ci[0], 3) + " … " + num(s.ci[1], 3) : "—") + "</td></tr>"; }); });
+  x += "</table></div>";
+  x += "<h2>Otevřené paper sázky (" + (p.open || []).length + ")</h2><div class='box tbl'>" + ((p.open || []).length ? "<table><tr><th>trh</th><th>strategie</th><th>strana</th><th>cena</th><th>konec</th></tr>" + p.open.map(function (f) { return "<tr><td>" + esc(f.asset) + " " + esc(f.tf) + "</td><td>" + (f.book === "fair" ? "Fair" : "VP") + "</td><td>" + esc(f.side) + "</td><td>" + num(f.px * 100, 1) + " ¢</td><td>" + fmtS(f.end) + "</td></tr>"; }).join("") + "</table>" : '<p class="note">žádné</p>') + "</div>";
+  x += "<h2>Poslední filly</h2><div class='box tbl'>" + ((p.fills || []).length ? "<table><tr><th>čas</th><th>trh</th><th>str.</th><th>strana</th><th>cena</th><th>výsledek</th></tr>" + p.fills.map(function (f) { return "<tr><td>" + fmtS(f.ts) + "</td><td>" + esc(f.asset) + " " + esc(f.tf) + "</td><td>" + (f.book === "fair" ? "Fair" : "VP") + "</td><td>" + esc(f.side) + "</td><td>" + num(f.px * 100, 1) + " ¢</td><td>" + (f.result == null ? "čeká" : usd(f.result)) + "</td></tr>"; }).join("") + "</table>" : '<p class="note">zatím žádné</p>') + "</div>";
+  x += "<h2>Aktivní trhy (" + (cv.activeMarkets || 0) + ")</h2><div class='box tbl'><table><tr><th>trh</th><th>zóna</th><th>Up ask</th><th>Down ask</th><th>konec</th></tr>" + (p.markets || []).map(function (m) { return "<tr><td>" + esc(m.asset) + " " + esc(m.tf) + "</td><td>" + esc(m.zone || "—") + "</td><td>" + (m.upAsk != null ? num(m.upAsk * 100, 1) + " ¢" : "—") + "</td><td>" + (m.downAsk != null ? num(m.downAsk * 100, 1) + " ¢" : "—") + "</td><td>" + fmtS(m.end) + "</td></tr>"; }).join("") + "</table></div>";
+  x += "<h2>Pokrytí dat</h2><div class='box'>" + row("aktiva", esc((cv.assets || []).join(", "))) + row("timeframy", esc(Object.keys(cv.byTf || {}).map(function (k) { return k + " " + cv.byTf[k]; }).join(" · "))) + row("deník forward / replay", (cv.rowsForward || 0) + " / " + (cv.rowsReplay || 0)) + row("replay", esc(rp.state) + (rp.total ? " " + rp.done + "/" + rp.total : "")) + "</div>";
+  $("ppbody").innerHTML = x;
+}
+
 /* ===== vykreslení snímku ===== */
 function renderAll() {
   if (!data) return;
@@ -275,6 +319,8 @@ function renderAll() {
   try { renderPerp(data.perp); } catch (e) { $("perpbody").textContent = "chyba vykreslení"; }
   try { renderUltron(data.ultron); } catch (e) { $("ultronbody").textContent = "chyba vykreslení"; }
   try { renderSystem(data.system, data.readiness); } catch (e) { $("systembody").textContent = "chyba vykreslení"; }
+  try { renderHD((data.bots || {}).hyperdesk); } catch (e) { $("hdbody").textContent = "chyba vykreslení"; }
+  try { renderPP((data.bots || {}).polyprofile); } catch (e) { $("ppbody").textContent = "chyba vykreslení"; }
   var b2 = data.books, s = $("src"); if (b2 && b2.tracker) { s.className = "src"; s.innerHTML = '<span class="pill acc">SNÍMEK z boxu</span> <span>tracker BTC kontroly k <b>' + fmtT(b2.tracker.updatedAt) + "</b> · BTC <b>" + (b2.tracker.btcPrice != null ? "$" + Math.round(b2.tracker.btcPrice).toLocaleString("cs-CZ") : "—") + "</b> (" + esc(b2.tracker.btcSource || "—") + ")</span>"; }
   var i = data.info; $("hdrline").textContent = i && i.live ? "LIVE: " + i.live : "";
 }
