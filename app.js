@@ -267,6 +267,10 @@ function renderSystem(sy, rd) {
   $("systembody").innerHTML = h || '<p class="note">zatím bez dat</p>';
 }
 
+
+function botHead(file, name, sub) {
+  return '<div class="bothead"><img src="avatars/' + file + '.svg?v=3" alt=""><div class="nm">' + name + '<small>' + sub + ' · PAPER · LIVE vypnutý</small></div></div>';
+}
 /* ===== TRADING BOTI (HyperDesk + PolyProfile + AdaptivePoly) — jen sledování ===== */
 var fmtS = function (s) { return s ? fmtMs(s * 1000) : "—"; };
 var badges = '<div class="src"><span class="pill">PAPER</span> <span class="pill bad">LIVE natvrdo vypnutý</span> <span class="pill">jen sledování · schvalování jen na boxu</span></div>';
@@ -280,8 +284,8 @@ function seatsHtml(se) {
   return '<div class="gates">' + ["strategist", "risk", "ticket", "fill"].map(function (k) { var x = (se || {})[k] || {}; return '<div class="gate ' + (x.state === "error" ? "no" : "ok") + '"><b>' + esc(k) + " · " + esc(x.state || "—") + "</b><small>" + esc(x.msg || "") + "</small></div>"; }).join("") + "</div>";
 }
 function renderHD(h) {
-  if (!h) { $("hdbody").innerHTML = '<p class="note">zatím bez dat (HyperDesk na boxu neběží nebo ještě nic neposlal)</p>'; return; }
-  var f = h.forward || {}, x = "";
+  if (!h) { $("hdbody").innerHTML = '<p class="note">zatím bez dat (Hyperion · HyperDesk na boxu neběží nebo ještě nic neposlal)</p>'; return; }
+  var f = h.forward || {}, x = botHead("hyperion", "Hyperion", "HyperDesk");
   x += badges + '<div class="sum"><div class="box"><h3>Equity (paper)</h3><div class="big">' + usdPlain(h.equity) + '</div><div class="note">start $' + h.start + " · realizováno " + usd(h.realized) + " · otevřeno " + usd(h.unrealized) + "</div>" + spark(h.curve) + "</div>" +
     '<div class="box"><h3>Dnes a risk</h3>' + row("dnes", usd(h.dayPnl)) + row("auto-paper", h.autoPaper ? "zapnuto" : "vypnuto (čeká na Schválit)") + row("kill switch", h.killed ? '<span class="neg">AKTIVNÍ</span>' : "ne") + row("universe", esc(h.universe) + " párů") + "</div>" +
     '<div class="box"><h3>Forward paper</h3>' + row("obchody", f.n || 0) + row("čistý", usd(f.net)) + row("win", f.winRate != null ? pct(f.winRate * 100) : "—") + row("Sharpe", num(f.sharpe)) + row("max DD", f.maxDD != null ? pct(f.maxDD * 100) : "—") + row("edge ratio", num(f.edgeRatio)) + row("poplatky", usdPlain(f.fees)) + "</div></div>";
@@ -295,8 +299,8 @@ function renderHD(h) {
   $("hdbody").innerHTML = x;
 }
 function renderPP(p) {
-  if (!p) { $("ppbody").innerHTML = '<p class="note">zatím bez dat (PolyProfile na boxu neběží nebo ještě nic neposlal)</p>'; return; }
-  var x = badges, cv = p.coverage || {}, rp = p.replay || {};
+  if (!p) { $("ppbody").innerHTML = '<p class="note">zatím bez dat (Valora · PolyProfile na boxu neběží nebo ještě nic neposlal)</p>'; return; }
+  var x = botHead("valora", "Valora", "PolyProfile") + badges, cv = p.coverage || {}, rp = p.replay || {};
   var names = { strategy: "VP-hold (ask+poplatek)", fair: "Fair BS/TWAP (ask+poplatek)", strategyAtMid: "VP @mid bez nákladů", coinflip: "coin flip", alwaysMid: "always-mid Up" };
   x += '<div class="sum"><div class="box"><h3>Equity (paper, VP+Fair)</h3><div class="big">' + usdPlain(p.equity) + '</div><div class="note">start $' + p.start + " · sázka $" + p.stake + "/obchod</div>" + spark(p.curve) + "</div>";
   [["VP", p.relearnVP], ["Fair", p.relearnFair]].forEach(function (a) { var r = a[1] || {}, l = r.last || {}; x += '<div class="box"><h3>Přeučování ' + a[0] + "</h3>" + row("stav", esc(r.phase === "relearning" ? "Přeučuji minulé obchody… aktualizuji prahy" : r.message || "—")) + row("aktivní", esc(JSON.stringify(r.active || {}))) + row("hash", esc(r.hash || "—")) + row("stín", r.shadow ? esc(JSON.stringify(r.shadow)) : "žádný") + row("poslední", l.decision ? esc(l.decision) + " · " + fmtS(l.ts) : "—") + (l.reason ? '<div class="hint">' + esc(l.reason) + "</div>" : "") + "</div>"; });
@@ -313,8 +317,8 @@ function renderPP(p) {
 
 
 function renderAP(p) {
-  if (!p) { $("apbody").innerHTML = '<p class="note">zatím bez dat (AdaptivePoly na boxu neběží nebo ještě nic neposlal)</p>'; return; }
-  var x = badges, cv = p.coverage || {}, rp = p.replay || {}, rl = p.relearn || {}, l = rl.last || {};
+  if (!p) { $("apbody").innerHTML = '<p class="note">zatím bez dat (Chiméra · AdaptivePoly na boxu neběží nebo ještě nic neposlal)</p>'; return; }
+  var x = botHead("chimera", "Chiméra", "AdaptivePoly") + badges, cv = p.coverage || {}, rp = p.replay || {}, rl = p.relearn || {}, l = rl.last || {};
   x += '<div class="sum"><div class="box"><h3>Equity (paper Adaptive)</h3><div class="big">' + usdPlain(p.equity) + '</div><div class="note">start $' + p.start + " · sázka $" + p.stake + "/obchod</div>" + spark(p.curve) + "</div>";
   x += '<div class="box"><h3>Přeučování Adaptive</h3>' + row("stav", esc(rl.phase === "relearning" ? "Přeučuji…" : rl.message || "—")) + row("aktivní", esc(JSON.stringify(rl.active || {}))) + row("hash", esc(rl.hash || "—")) + row("poslední", l.decision ? esc(l.decision) + " · " + fmtS(l.ts) : "—") + (l.reason ? '<div class="hint">' + esc(l.reason) + "</div>" : "") + "</div>";
   x += '<div class="box"><h3>Bayes top</h3>' + ((p.bayes || []).slice(0, 6).map(function (b) { return row(esc(b.key), pct((b.mean || 0) * 100) + " · n≈" + num(b.n, 0)); }).join("") || '<p class="note">prior</p>') + "</div></div>";

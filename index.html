@@ -12,10 +12,10 @@
 <meta name="apple-mobile-web-app-title" content="NOVA desk">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>NOVA desk · sledování</title>
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json?v=3">
+<link rel="icon" href="icon-192.png?v=3">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=3">
+<link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
 <div id="notopic" hidden><div class="big2">📈</div><div>Otevři NOVA desk přes svůj soukromý odkaz.</div></div>
@@ -25,8 +25,15 @@
   <div><span class="pill badge">JEN SLEDOVÁNÍ</span> <span class="pill bad">LIVE natvrdo vypnutý</span> <span class="pill">PAPER</span> <span class="pill" id="hdrline" hidden></span></div>
 </header>
 <div id="fresh" class="fresh warn">načítám…</div>
-<nav>
-  <button id="nav-knihy" class="on">Knihy</button><button id="nav-desk">Desk</button><button id="nav-perp">Perp</button><button id="nav-ultron">Ultron</button><button id="nav-system">Systém</button><button id="nav-hyperdesk">HyperDesk</button><button id="nav-polyprofile">PolyProfile</button><button id="nav-adaptivepoly">AdaptivePoly</button>
+<nav id="tabs">
+  <button id="nav-knihy" class="on">Knihy</button>
+  <button id="nav-desk">Desk</button>
+  <button id="nav-perp">Perp</button>
+  <button id="nav-ultron">Ultron</button>
+  <button id="nav-system">Systém</button>
+  <button id="nav-hyperdesk" class="bot"><img class="tav" src="avatars/hyperion.svg?v=3" alt=""><span class="tn">Hyperion<small>HyperDesk</small></span></button>
+  <button id="nav-polyprofile" class="bot"><img class="tav" src="avatars/valora.svg?v=3" alt=""><span class="tn">Valora<small>PolyProfile</small></span></button>
+  <button id="nav-adaptivepoly" class="bot"><img class="tav" src="avatars/chimera.svg?v=3" alt=""><span class="tn">Chiméra<small>AdaptivePoly</small></span></button>
 </nav>
 <section id="tab-knihy">
   <div id="src" class="src">čekám na data z boxu…</div>
@@ -46,6 +53,6 @@
 </div>
 <button id="forgetbtn" title="Nastavení">⚙</button>
 <div id="forgetpanel" hidden><div>Na tomto zařízení zapomene soukromý kanál. Znovu ho otevřeš jen přes svůj soukromý odkaz.</div><button id="forgetgo">Zapomenout kanál</button></div>
-<script src="app.js"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>
