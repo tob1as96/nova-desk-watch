@@ -1,6 +1,6 @@
 // Service worker: cachuje jen shell (nikdy ntfy). Síť má přednost, cache je záloha pro offline.
-const CACHE = "novadesk-shell-v6";
-const SHELL = ["./", "index.html", "app.js?v=6", "realcap.js?v=6", "rc-init.js?v=6", "style.css?v=4", "manifest.json?v=4", "icon-192.png?v=4", "icon-512.png", "apple-touch-icon.png?v=4", "avatars/hyperion.svg?v=4", "avatars/valora.svg?v=4", "avatars/chimera.svg?v=4"];
+const CACHE = "novadesk-shell-v7";
+const SHELL = ["./", "index.html", "app.js?v=7", "realcap.js?v=7", "rc-init.js?v=7", "style.css?v=4", "manifest.json?v=4", "icon-192.png?v=4", "icon-512.png", "apple-touch-icon.png?v=4", "avatars/hyperion.svg?v=4", "avatars/valora.svg?v=4", "avatars/chimera.svg?v=4"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener("fetch", e => {

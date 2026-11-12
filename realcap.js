@@ -178,5 +178,46 @@ function mount(o) {
 }
 function badgeInto(el) { el = typeof el === "string" ? root.document.getElementById(el) : el; if (!el) return; injectCss(); el.innerHTML = badge(); }
 if (root.document) root.document.addEventListener("click", function (e) { var b = e.target && e.target.closest && e.target.closest("[data-rc-cap]"); if (b) { e.preventDefault(); setCap(+b.getAttribute("data-rc-cap")); } });
-root.RC = { analyze: analyze, card: card, badge: badge, badgeInto: badgeInto, attach: attach, mount: mount, setCap: setCap, getCap: function () { return cap; }, onChange: onChange, CAPS: CAPS, MIN_GENERATED: MIN.generated };
+
+function inferBookVenue(b) {
+  var id = String((b && b.id) || ""), e = (b && b.extras) || {}, v = String(e.venue || "");
+  if (/BYBIT/i.test(id) || /bybit/i.test(v)) return "bybit";
+  if (/HYPERLIQUID|(^|[-_])HL($|[-_])/i.test(id) || /hyperliquid/i.test(v)) return "hyperliquid";
+  if (/BFX|BITFINEX/i.test(id) || /bfx|bitfinex/i.test(v)) return "bitfinex";
+  if (/OKX/i.test(id) || /okx/i.test(v)) return "okx";
+  return "okx"; // Pulse perp / carry / DL20 / combo / G50 paper books are OKX
+}
+/* Řádek 250/500 $ pro záložku Knihy (stejný odhad jako localhost knihy.html, plus kontrola minim burzy). */
+function bookLine(b, c) {
+  c = c || cap;
+  if (!b || !b.capital) return "";
+  var k = c / b.capital, venue = inferBookVenue(b), pos = b.positions || [], below = [], unknown = 0, lowest = Infinity;
+  pos.forEach(function (p) {
+    if (typeof p.notional !== "number") return;
+    var have = p.notional * k;
+    if (have < lowest) lowest = have;
+    var sym = String(p.sym || "");
+    // COMBO-S etc. use "TV:AVAX" / "F4:AVAX" — strip strategy prefix so the base hits the minimums table
+    if (sym.indexOf(":") >= 0) {
+      var left = sym.split(":")[0];
+      if (!/^(okx|bybit|hyperliquid|binance)$/i.test(left)) sym = sym.split(":").slice(1).join(":");
+    }
+    var need = minUsd(venue, baseOf({ sym: sym }), "swap", null) || minUsd(venue, baseOf({ sym: sym }), "spot", null);
+    // OKX often has only a qty minimum (notional=0) and we have no price here → use 10 $ floor as odhad (same as knihy.html)
+    if (!need || (need.est && !(need.usd > 0))) { unknown++; need = { usd: Math.max((need && need.usd) || 0, HL_MIN_USD), est: true }; }
+    if (have + 1e-9 < need.usd) below.push((p.sym || "?") + " " + usd(have) + " < min " + usd(need.usd) + (need.est ? " (odhad)" : ""));
+  });
+  var html = '<div class="note rc-bookline" style="border:1px solid #8a6a20;border-radius:8px;padding:5px 8px;margin:6px 0;color:#ffd27a">';
+  html += "Reálně " + c + " $ (×" + nf(k, 2) + "): čistý " + usd(b.netUsd == null ? null : b.netUsd * k);
+  if (b.ctrlUsd != null) html += " · BTC kontrola " + usd(b.ctrlUsd * k);
+  if (isFinite(lowest)) html += " · nejmenší pozice " + usd(lowest);
+  if (below.length) html += ' · <b style="color:var(--bad)">' + below.length + " poz. pod minimem burzy → nešlo by provést</b> (" + esc(below.slice(0, 4).join("; ")) + (below.length > 4 ? "…" : "") + ")";
+  if (b.capital > c * 2) html += " · kniha počítá s " + usd(b.capital, 0) + ", reálně " + nf(k * 100, 0) + " % velikosti";
+  var minNote = venue === "bitfinex" ? "Bitfinex není v tabulce minim, práh 10 $ jako u Hyperliquid (odhad)" : (venue + " minima z veřejného API (" + esc(MIN.generated || "") + ")");
+  if (unknown) minNote += "; " + unknown + " poz. bez přesného minima, použit práh 10 $";
+  html += ' <span class="zero">· odhad (P&L lineárně × kapitál; ' + minNote + ")</span></div>";
+  return html;
+}
+
+root.RC = { analyze: analyze, card: card, badge: badge, badgeInto: badgeInto, attach: attach, mount: mount, setCap: setCap, getCap: function () { return cap; }, onChange: onChange, CAPS: CAPS, MIN_GENERATED: MIN.generated, bookLine: bookLine, minUsd: minUsd };
 })(typeof window !== "undefined" ? window : globalThis);

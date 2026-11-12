@@ -134,6 +134,7 @@ var barW = function (p) { return Math.max(0, Math.min(100, p || 0)); };
         <div><small>obchody do 1. hodnocení</small><b>${trHtml}</b></div><div><small>hotovost / v pozicích</small><b>${b.cash != null ? (cashPct != null ? cashPct + " %" : usdPlain(b.cash)) : NA}</b><small>${b.cash != null ? `${b.cashDerived ? "≈" : ""}$${b.cash.toFixed(0)} / $${(b.inPositions ?? 0).toFixed(0)} · ${b.nPos ?? 0} poz.` : ""}</small></div><div><small>max DD</small><b>${dd}</b>${b.maxDdNote ? `<small>${esc(b.maxDdNote)}</small>` : ""}</div></div>
       ${tr ? `<div class="bar" title="${esc(tr.text ?? "")}"><i style="width:${Math.min(100, tr.n / tr.target * 100)}%"></i></div><div class="note">${esc(tr.text ?? "")}</div>` : '<div class="note">počet obchodů: zatím bez dat</div>'}
       ${ex}${pos}
+      ${(window.RC && RC.bookLine) ? RC.bookLine(b) : ""}
       ${b.reasonCs ? `<div class="reason">${esc(b.reasonCs)}</div>` : ""}
       <div class="foot">start ${fmtT(b.startAt)} · kapitál ${b.capital != null ? "$" + b.capital : "—"} · data ${fmtT(b.updatedAt)}${b.ageSec != null ? ` (${Math.round(b.ageSec / 60)} min před trackerem)` : ""}${b.lastError ? " · chyba: " + esc(String(b.lastError).slice(0, 80)) : ""}</div>
     </div>`;
@@ -341,6 +342,7 @@ function renderPP(p) {
 function renderAP(p) {
   if (!p) { $("apbody").innerHTML = '<p class="note">zatím bez dat (Chiméra · AdaptivePoly na boxu neběží nebo ještě nic neposlal)</p>'; return; }
   var x = botHead("chimera", "Chiméra", "AdaptivePoly") + badges, cv = p.coverage || {}, rp = p.replay || {}, rl = p.relearn || {}, l = rl.last || {};
+  if (p.paused || p.bookC === "PAUSED") x += '<div class="src warn"><span class="pill bad">Kniha C: PAUSED</span> <span>žádné nové vstupy; otevřené pozice se vypořádávají; engine a sběr dat běží</span></div>';
   x += '<div class="sum"><div class="box"><h3>Equity (paper Adaptive)</h3><div class="big">' + usdPlain(p.equity) + '</div><div class="note">start $' + p.start + " · sázka $" + p.stake + "/obchod</div>" + spark(p.curve) + "</div>";
   x += '<div class="box"><h3>Přeučování Adaptive</h3>' + row("stav", esc(rl.phase === "relearning" ? "Přeučuji…" : rl.message || "—")) + row("aktivní", esc(JSON.stringify(rl.active || {}))) + row("hash", esc(rl.hash || "—")) + row("poslední", l.decision ? esc(l.decision) + " · " + fmtS(l.ts) : "—") + (l.reason ? '<div class="hint">' + esc(l.reason) + "</div>" : "") + "</div>";
   x += '<div class="box"><h3>Bayes top</h3>' + ((p.bayes || []).slice(0, 6).map(function (b) { return row(esc(b.key), pct((b.mean || 0) * 100) + " · n≈" + num(b.n, 0)); }).join("") || '<p class="note">prior</p>') + "</div></div>";
