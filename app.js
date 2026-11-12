@@ -311,7 +311,7 @@ function renderHD(h) {
   x += badges + '<div class="sum"><div class="box"><h3>Equity (paper)</h3><div class="big">' + usdPlain(h.equity) + '</div><div class="note">start $' + h.start + " · realizováno " + usd(h.realized) + " · otevřeno " + usd(h.unrealized) + "</div>" + spark(h.curve) + "</div>" +
     '<div class="box"><h3>Dnes a risk</h3>' + row("dnes", usd(h.dayPnl)) + row("auto-paper", h.autoPaper ? "zapnuto" : "vypnuto (čeká na Schválit)") + row("kill switch", h.killed ? '<span class="neg">AKTIVNÍ</span>' : "ne") + row("universe", esc(h.universe) + " párů") + "</div>" +
     '<div class="box"><h3>Forward paper</h3>' + row("obchody", f.n || 0) + row("čistý", usd(f.net)) + row("win", f.winRate != null ? pct(f.winRate * 100) : "—") + row("Sharpe", num(f.sharpe)) + row("max DD", f.maxDD != null ? pct(f.maxDD * 100) : "—") + row("edge ratio", num(f.edgeRatio)) + row("poplatky", usdPlain(f.fees)) + "</div></div>";
-  x += longHTML(h.longReplay, "hd"); x += "<h2>Pipeline</h2>" + seatsHtml(h.seats);
+  x += (window.RC ? RC.card("hd", h) : ""); x += longHTML(h.longReplay, "hd"); x += "<h2>Pipeline</h2>" + seatsHtml(h.seats);
   x += "<h2>Otevřené paper pozice (" + (h.open || []).length + ")</h2><div class='box tbl'>" + ((h.open || []).length ? "<table><tr><th>id</th><th>mince</th><th>strana</th><th>strat.</th><th>vstup</th><th>teď</th><th>stop</th><th>pnl</th></tr>" + h.open.map(function (p) { return "<tr><td>" + esc(p.id) + "</td><td>" + esc(p.base) + " " + esc(p.venue) + "</td><td>" + esc(p.side) + "</td><td>" + esc(p.strategy) + "</td><td>" + num(p.entryPx, 4) + "</td><td>" + num(p.px, 4) + "</td><td>" + num(p.stop, 4) + "</td><td>" + usd(p.upnl) + "</td></tr>"; }).join("") + "</table>" : '<p class="note">žádné</p>') + "</div>";
   x += "<h2>Poslední tikety</h2><div class='box tbl'>" + ((h.tickets || []).length ? "<table><tr><th>id</th><th>mince</th><th>strana</th><th>strat.</th><th>stav</th><th>čas</th></tr>" + h.tickets.map(function (t) { return "<tr><td>" + esc(t.id) + "</td><td>" + esc(t.base) + " " + esc(t.venue) + "</td><td>" + esc(t.side) + "</td><td>" + esc(t.strategy) + "</td><td>" + esc(t.status) + "</td><td>" + fmtS(t.ts) + "</td></tr>"; }).join("") + "</table>" : '<p class="note">žádné</p>') + "</div>";
   var r = h.replay || {}, rk = Object.keys(r);
@@ -327,7 +327,7 @@ function renderPP(p) {
   x += '<div class="sum"><div class="box"><h3>Equity (paper, VP+Fair)</h3><div class="big">' + usdPlain(p.equity) + '</div><div class="note">start $' + p.start + " · sázka $" + p.stake + "/obchod</div>" + spark(p.curve) + "</div>";
   [["VP", p.relearnVP], ["Fair", p.relearnFair]].forEach(function (a) { var r = a[1] || {}, l = r.last || {}; x += '<div class="box"><h3>Přeučování ' + a[0] + "</h3>" + row("stav", esc(r.phase === "relearning" ? "Přeučuji minulé obchody… aktualizuji prahy" : r.message || "—")) + row("aktivní", esc(JSON.stringify(r.active || {}))) + row("hash", esc(r.hash || "—")) + row("stín", r.shadow ? esc(JSON.stringify(r.shadow)) : "žádný") + row("poslední", l.decision ? esc(l.decision) + " · " + fmtS(l.ts) : "—") + (l.reason ? '<div class="hint">' + esc(l.reason) + "</div>" : "") + "</div>"; });
   x += "</div>";
-  x += longHTML(p.longReplay, "poly"); x += "<h2>Strategie vs. baseline (krátký replay 48 h = nevypovídající)</h2><div class='box tbl'><table><tr><th>zdroj</th><th>kniha</th><th>n</th><th>čistý</th><th>win</th><th>95% CI Ø</th></tr>";
+  x += (window.RC ? RC.card("pp", p) : ""); x += longHTML(p.longReplay, "poly"); x += "<h2>Strategie vs. baseline (krátký replay 48 h = nevypovídající)</h2><div class='box tbl'><table><tr><th>zdroj</th><th>kniha</th><th>n</th><th>čistý</th><th>win</th><th>95% CI Ø</th></tr>";
   ["forward", "replay"].forEach(function (src) { var c = (p.comparison || {})[src] || {}; Object.keys(names).forEach(function (k) { var s = c[k] || {}; x += "<tr><td>" + src + "</td><td>" + names[k] + "</td><td>" + (s.n || 0) + "</td><td>" + (s.n ? usd(s.net) : "—") + "</td><td>" + (s.n ? pct(s.winRate * 100) : "—") + "</td><td>" + (s.ci ? num(s.ci[0], 3) + " … " + num(s.ci[1], 3) : "—") + "</td></tr>"; }); });
   x += "</table></div>";
   x += "<h2>Otevřené paper sázky (" + (p.open || []).length + ")</h2><div class='box tbl'>" + ((p.open || []).length ? "<table><tr><th>trh</th><th>strategie</th><th>strana</th><th>cena</th><th>konec</th></tr>" + p.open.map(function (f) { return "<tr><td>" + esc(f.asset) + " " + esc(f.tf) + "</td><td>" + (f.book === "fair" ? "Fair" : "VP") + "</td><td>" + esc(f.side) + "</td><td>" + num(f.px * 100, 1) + " ¢</td><td>" + fmtS(f.end) + "</td></tr>"; }).join("") + "</table>" : '<p class="note">žádné</p>') + "</div>";
@@ -344,7 +344,7 @@ function renderAP(p) {
   x += '<div class="sum"><div class="box"><h3>Equity (paper Adaptive)</h3><div class="big">' + usdPlain(p.equity) + '</div><div class="note">start $' + p.start + " · sázka $" + p.stake + "/obchod</div>" + spark(p.curve) + "</div>";
   x += '<div class="box"><h3>Přeučování Adaptive</h3>' + row("stav", esc(rl.phase === "relearning" ? "Přeučuji…" : rl.message || "—")) + row("aktivní", esc(JSON.stringify(rl.active || {}))) + row("hash", esc(rl.hash || "—")) + row("poslední", l.decision ? esc(l.decision) + " · " + fmtS(l.ts) : "—") + (l.reason ? '<div class="hint">' + esc(l.reason) + "</div>" : "") + "</div>";
   x += '<div class="box"><h3>Bayes top</h3>' + ((p.bayes || []).slice(0, 6).map(function (b) { return row(esc(b.key), pct((b.mean || 0) * 100) + " · n≈" + num(b.n, 0)); }).join("") || '<p class="note">prior</p>') + "</div></div>";
-  x += longHTML(p.longReplay, "poly"); x += "<h2>Strategie vs. baseline (krátký replay 48 h = nevypovídající)</h2><div class='box tbl'><table><tr><th>zdroj</th><th>kniha</th><th>n</th><th>čistý</th><th>win</th></tr>";
+  x += (window.RC ? RC.card("ap", p) : ""); x += longHTML(p.longReplay, "poly"); x += "<h2>Strategie vs. baseline (krátký replay 48 h = nevypovídající)</h2><div class='box tbl'><table><tr><th>zdroj</th><th>kniha</th><th>n</th><th>čistý</th><th>win</th></tr>";
   var names = { adaptive: "Adaptive Bayes", MOM: "MOM", MR: "MR", FAIR: "FAIR", VP: "VP", coinflip: "coin flip" };
   ["forward", "replay"].forEach(function (src) { var c = (p.comparison || {})[src] || {}; Object.keys(names).forEach(function (k) { var s = c[k] || {}; x += "<tr><td>" + src + "</td><td>" + names[k] + "</td><td>" + (s.n || 0) + "</td><td>" + (s.n ? usd(s.net) : "—") + "</td><td>" + (s.n ? pct(s.winRate * 100) : "—") + "</td></tr>"; }); });
   x += "</table></div>";
@@ -354,6 +354,8 @@ function renderAP(p) {
   $("apbody").innerHTML = x;
 }
 
+/* ===== Reálný kapitál: přepínač 250/500 překreslí záložky botů (jen zobrazení) ===== */
+if (window.RC) { RC.onChange(function () { renderAll(); }); }
 /* ===== vykreslení snímku ===== */
 function renderAll() {
   if (!data) return;
