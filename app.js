@@ -170,8 +170,8 @@ var barW = function (p) { return Math.max(0, Math.min(100, p || 0)); };
   }
 
 /* ===== záložky ===== */
-var data = null, lastMsgAt = 0, hbSec = 600, deskOk = true, loadedAttach = "", curTab = "knihy";
-var TABS = ["knihy", "desk", "perp", "ultron", "system", "hyperdesk", "polyprofile", "adaptivepoly", "carryh", "apband", "office"];
+var data = null, lastMsgAt = 0, hbSec = 300, deskOk = true, loadedAttach = "", curTab = "prehled";
+var TABS = ["prehled", "knihy", "desk", "perp", "ultron", "system", "hyperdesk", "polyprofile", "adaptivepoly", "carryh", "apband", "office"];
 function showTab(t) { curTab = t; TABS.forEach(function (x) { $("tab-" + x).hidden = x !== t; $("nav-" + x).classList.toggle("on", x === t); }); try { sessionStorage.setItem("nd_tab", t); } catch (e) {} }
 TABS.forEach(function (t) { $("nav-" + t).onclick = function () { showTab(t); }; });
 try { var st0 = sessionStorage.getItem("nd_tab"); if (st0 && TABS.indexOf(st0) >= 0) curTab = st0; } catch (e) {}
@@ -383,7 +383,8 @@ function renderBAND(b) {
   $("bandbody").innerHTML = x;
 }
 function renderOffice(o) {
-  if (!o) { $("officebody").innerHTML = '<p class="note">zatím bez dat z kanceláře</p>'; return; }
+  var top = window.OV && data ? OV.healthHTML(data.ov) + OV.agentsHTML(data.ov) : "";
+  if (!o) { $("officebody").innerHTML = top + '<p class="note">zatím bez dat z kanceláře</p>'; return; }
   var last = o.last || {}, ev = { start: "pracuje", done: "hotovo", stuck: "zaseknutý", need: "potřebuje Petra" }, cl = { start: "acc", done: "good", stuck: "warn", need: "bad" };
   var teams = {}; (o.roster || []).forEach(function (m) { (teams[m.team || "Ostatní"] = teams[m.team || "Ostatní"] || []).push(m); });
   Object.keys(last).forEach(function (n) { if (!(o.roster || []).some(function (m) { return m.name === n; })) (teams["Noví"] = teams["Noví"] || []).push({ name: n }); });
@@ -391,13 +392,14 @@ function renderOffice(o) {
   Object.keys(teams).forEach(function (t) {
     x += "<h2>" + esc(t) + "</h2><div class='box'>" + teams[t].map(function (m) { var l = last[m.name]; return row((m.emoji ? esc(m.emoji) + " " : "") + "<b>" + esc(m.name) + "</b>" + (m.role ? ' <span class="zero">' + esc(m.role) + "</span>" : ""), l ? '<span class="pill ' + cl[l.ev] + '">' + ev[l.ev] + "</span> " + esc(l.msg) + ' <span class="zero">' + fmtS(l.ts) + "</span>" : '<span class="zero">dnes bez události</span>'); }).join("") + "</div>";
   });
-  $("officebody").innerHTML = x;
+  $("officebody").innerHTML = top + "<h2>🏢 Kancelář — poslední události kanálu</h2>" + x;
 }
 /* ===== Reálný kapitál: přepínač 250/500 překreslí záložky botů (jen zobrazení) ===== */
 if (window.RC) { RC.onChange(function () { renderAll(); }); }
 /* ===== vykreslení snímku ===== */
 function renderAll() {
   if (!data) return;
+  try { if (window.OV) OV.render(data, $("ovbody")); } catch (e) { $("ovbody").textContent = "chyba vykreslení přehledu"; }
   try { var b = data.books; if (b && b.kind === "nova-books-view") { render(b, "live"); } } catch (e) { $("src").textContent = "chyba vykreslení: " + e.message; }
   try { renderDesk(data.desk, data.info); } catch (e) { $("deskbody").textContent = "chyba vykreslení"; }
   try { renderPerp(data.perp); } catch (e) { $("perpbody").textContent = "chyba vykreslení"; }
@@ -420,8 +422,11 @@ function tick() {
   var age = (now - lastMsgAt) / 1000, limit = hbSec + 120, stale = age > limit;
   var dataAge = data ? (now - data.at) / 1000 : null;
   el.className = "fresh " + (stale ? "bad" : "good");
+  var nxt = lastMsgAt + hbSec * 1000, ok = data && data.ov ? data.ov.allOk : null;
   el.innerHTML = "naposledy aktualizováno <b>" + fmtHMS(lastMsgAt) + "</b> (před " + human(age) + ")" + (dataAge != null && dataAge > 1500 ? " · snímek z " + fmtHMS(data.at) : "") +
-    (stale ? ' <span class="pill bad">DATA ZASTARALÁ</span>' : "") + (!deskOk ? ' <span class="pill warn">desk na boxu neodpovídá</span>' : "");
+    " · další data ~" + fmtHMS(nxt).slice(0, 5) + " (takt " + Math.round(hbSec / 60) + " min)" +
+    (ok === true ? ' <span class="pill good">VŠE BĚŽÍ</span>' : ok === false ? ' <span class="pill bad">NĚCO NEBĚŽÍ – viz Přehled</span>' : "") +
+    (stale ? ' <span class="pill bad">DATA ZASTARALÁ</span> <span>box neposlal data přes ' + human(age) + ' (box mohl být pozastaven platformou, nebo Tobirama nemá internet)</span>' : "") + (!deskOk ? ' <span class="pill warn">desk na boxu neodpovídá</span>' : "");
 }
 setInterval(tick, 1000);
 
@@ -457,5 +462,7 @@ backfill("1h").then(function (n) { if (!n) return backfill("12h"); }).catch(func
 var es; function sse() { try { es = new EventSource(BASE + "/sse"); es.onmessage = function (e) { try { handle(JSON.parse(e.data)); } catch (x) {} }; } catch (e) {} }
 sse();
 document.addEventListener("visibilitychange", function () { if (!document.hidden && (Date.now() - lastMsgAt) > 60000) backfill("1h").catch(function () {}); });
-setInterval(function () { if (!document.hidden && (Date.now() - lastMsgAt) > (hbSec + 60) * 1000) backfill("1h").catch(function () {}); }, 120000);
+/* live5: pojistka každou minutu (SSE může tiše spadnout) + nové připojení SSE; po 3 h tichý reload kvůli novému kódu */
+setInterval(function () { if ((Date.now() - lastMsgAt) > (hbSec + 30) * 1000) { backfill("1h").catch(function () {}); try { if (es && es.readyState === 2) sse(); } catch (e) {} } }, 60000);
+var openedAt = Date.now(); setInterval(function () { if (Date.now() - openedAt > 3 * 3600 * 1000 && navigator.onLine !== false) location.reload(); }, 300000);
 })();

@@ -15,7 +15,7 @@
 <link rel="manifest" href="manifest.json?v=4">
 <link rel="icon" href="icon-192.png?v=4">
 <link rel="apple-touch-icon" href="apple-touch-icon.png?v=4">
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
 <div id="notopic" hidden><div class="big2">📈</div><div>Otevři NOVA desk přes svůj soukromý odkaz.</div></div>
@@ -26,7 +26,8 @@
 </header>
 <div id="fresh" class="fresh warn">načítám…</div>
 <nav id="tabs">
-  <button id="nav-knihy" class="on">Knihy</button>
+  <button id="nav-prehled" class="on">Přehled</button>
+  <button id="nav-knihy">Knihy</button>
   <button id="nav-desk">Desk</button>
   <button id="nav-perp">Perp</button>
   <button id="nav-ultron">Ultron</button>
@@ -38,7 +39,8 @@
   <button id="nav-apband" class="bot"><span class="tn">AP-BAND<small>Polymarket pásmo</small></span></button>
   <button id="nav-office">Kancelář</button>
 </nav>
-<section id="tab-knihy">
+<section id="tab-prehled"><div id="ovbody"><p class="note">čekám na data z boxu…</p></div></section>
+<section id="tab-knihy" hidden>
   <div id="src" class="src">čekám na data z boxu…</div>
   <div id="sys"></div>
   <div id="sum" class="sum"></div>
@@ -55,12 +57,13 @@
 <section id="tab-apband" hidden><div id="bandbody"><p class="note">čekám na data z boxu…</p></div></section>
 <section id="tab-office" hidden><div id="officebody"><p class="note">čekám na data z boxu…</p></div></section>
 <section id="tab-system" hidden><div id="systembody"><p class="note">čekám na data z boxu…</p></div></section>
-<p class="foot" style="margin-top:24px">Čas: Europe/Prague. Kopie stavu z boxu (snímek se posílá při změně a při heartbeatu), žádné ovládání, žádný zápis zpět do desku.</p>
+<p class="foot" style="margin-top:24px">Čas: Europe/Prague. Kopie stavu z boxu (snímek á 5 min, v noci 01–07 h á 30 min), žádné ovládání, žádný zápis zpět do desku.</p>
 </div>
 <button id="forgetbtn" title="Nastavení">⚙</button>
 <div id="forgetpanel" hidden><div>Na tomto zařízení zapomene soukromý kanál. Znovu ho otevřeš jen přes svůj soukromý odkaz.</div><button id="forgetgo">Zapomenout kanál</button></div>
-<script src="realcap.js?v=7"></script>
-<script src="app.js?v=7"></script>
-<script src="rc-init.js?v=7"></script>
+<script src="realcap.js?v=8"></script>
+<script src="overview.js?v=8"></script>
+<script src="app.js?v=8"></script>
+<script src="rc-init.js?v=8"></script>
 </body>
 </html>
