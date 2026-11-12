@@ -170,7 +170,7 @@ var barW = function (p) { return Math.max(0, Math.min(100, p || 0)); };
 
 /* ===== záložky ===== */
 var data = null, lastMsgAt = 0, hbSec = 600, deskOk = true, loadedAttach = "", curTab = "knihy";
-var TABS = ["knihy", "desk", "perp", "ultron", "system", "hyperdesk", "polyprofile", "adaptivepoly"];
+var TABS = ["knihy", "desk", "perp", "ultron", "system", "hyperdesk", "polyprofile", "adaptivepoly", "carryh", "apband", "office"];
 function showTab(t) { curTab = t; TABS.forEach(function (x) { $("tab-" + x).hidden = x !== t; $("nav-" + x).classList.toggle("on", x === t); }); try { sessionStorage.setItem("nd_tab", t); } catch (e) {} }
 TABS.forEach(function (t) { $("nav-" + t).onclick = function () { showTab(t); }; });
 try { var st0 = sessionStorage.getItem("nd_tab"); if (st0 && TABS.indexOf(st0) >= 0) curTab = st0; } catch (e) {}
@@ -354,6 +354,43 @@ function renderAP(p) {
   $("apbody").innerHTML = x;
 }
 
+
+/* ===== CARRY-H, AP-BAND, Kancelář (2026-11-12 box-always) — jen sledování ===== */
+function head2(name, sub) { return '<div class="bothead"><div class="nm">' + name + '<small>' + sub + ' · PAPER · LIVE vypnutý</small></div></div>'; }
+function renderCH(c) {
+  if (!c) { $("chbody").innerHTML = '<p class="note">zatím bez dat (CARRY-H na boxu neběží nebo ještě nic neposlal)</p>'; return; }
+  var st = c.stats || {}, rp = c.replay || {}, ru = c.rules || {};
+  var x = head2("CARRY-H", "short perp + long spot · funding carry") + badges;
+  x += '<div class="sum"><div class="box"><h3>Equity (paper, MTM)</h3><div class="big">' + usdPlain(c.equity) + '</div><div class="note">start $' + esc(c.start) + " · realizováno " + usd(c.realized) + "</div>" + spark(c.curve) + "</div>";
+  x += '<div class="box"><h3>Forward</h3>' + row("uzavřeno", st.n || 0) + row("čistý", usd(st.net)) + row("z fundingu", usd(st.fund)) + row("brána", esc(st.gate || "—")) + row("kill", c.killed ? '<span class="neg">AKTIVNÍ</span>' : "ne") + "</div>";
+  x += '<div class="box"><h3>Replay</h3>' + row("obchody", rp.n || 0) + row("čistý", usd(rp.net)) + row("Sharpe", num(rp.sharpe)) + row("max DD", rp.maxDD != null ? pct(rp.maxDD * 100) : "—") + row("pravidla", "$" + esc(ru.notional) + "/nohu · max " + esc(ru.maxOpen)) + "</div></div>";
+  x += (window.RC ? RC.card("ch", c) : "");
+  x += "<h2>Otevřené páry (" + (c.open || []).length + ")</h2><div class='box tbl'>" + ((c.open || []).length ? "<table><tr><th>mince</th><th>burza</th><th>funding p.a.</th><th>vstup</th><th>P&amp;L</th></tr>" + c.open.map(function (p) { return "<tr><td>" + esc(p.base) + "</td><td>" + esc(p.venue) + "</td><td>" + pct((p.apr || 0) * 100, 0) + "</td><td>" + fmtS(p.t) + "</td><td>" + usd(p.upnl) + "</td></tr>"; }).join("") + "</table>" : '<p class="note">žádné</p>') + "</div>";
+  x += "<h2>Deník</h2><div class='box'>" + ((c.log || []).slice(0, 8).map(function (l) { return row(fmtS(l.ts), esc(l.msg)); }).join("") || '<p class="note">prázdný</p>') + "</div>";
+  $("chbody").innerHTML = x;
+}
+function renderBAND(b) {
+  if (!b) { $("bandbody").innerHTML = '<p class="note">zatím bez dat (AP-BAND na boxu neběží nebo ještě nic neposlal)</p>'; return; }
+  var r = b.risk || {};
+  var x = head2("AP-BAND", "Polymarket Up/Down · pásmo 0,10–0,90 · Bayes EV") + badges;
+  x += '<div class="sum"><div class="box"><h3>Equity (paper)</h3><div class="big">' + usdPlain(b.equity) + '</div><div class="note">start $' + esc(b.startEquity) + " · hotovost " + usdPlain(b.cash) + " · dnes " + usd(b.dayPnl) + "</div></div>";
+  x += '<div class="box"><h3>Risk</h3>' + row("kill", r.killed ? '<span class="neg">AKTIVNÍ</span>' : "ne") + row("denní stop", r.dayHalt ? '<span class="neg">ANO</span>' : "ne") + row("nejhorší případ equity", usdPlain(b.worstCaseEquity)) + row("MTM equity", usdPlain(b.mtmEquity)) + row("limity", "trh ≤ $" + esc(r.maxPerMarket) + " · celkem ≤ $" + esc(r.maxOpenTotal) + " · kill ≤ $" + esc(r.killAt)) + "</div>";
+  x += '<div class="box"><h3>Obchody</h3>' + row("otevřeno", (b.nOpen || 0) + " · $" + num(b.openStake)) + row("vypořádáno", b.nSettled || 0) + row("výher", b.wins || 0) + row("pozorování", b.nObs || 0) + "</div></div>";
+  x += (window.RC ? RC.card("band", b) : "");
+  x += "<h2>Filly</h2><div class='box tbl'>" + ((b.fills || []).length ? "<table><tr><th>čas</th><th>trh</th><th>strat.</th><th>strana</th><th>$</th><th>cena</th><th>výsledek</th></tr>" + b.fills.map(function (f) { return "<tr><td>" + fmtS(f.ts) + "</td><td>" + esc(f.asset) + " " + esc(f.tf) + "</td><td>" + esc(f.strategy) + "</td><td>" + esc(f.side) + "</td><td>" + num(f.stake) + "</td><td>" + num(f.px, 3) + "</td><td>" + (f.result == null ? "otevřeno" : usd(f.result)) + "</td></tr>"; }).join("") + "</table>" : '<p class="note">zatím žádný fill</p>') + "</div>";
+  $("bandbody").innerHTML = x;
+}
+function renderOffice(o) {
+  if (!o) { $("officebody").innerHTML = '<p class="note">zatím bez dat z kanceláře</p>'; return; }
+  var last = o.last || {}, ev = { start: "pracuje", done: "hotovo", stuck: "zaseknutý", need: "potřebuje Petra" }, cl = { start: "acc", done: "good", stuck: "warn", need: "bad" };
+  var teams = {}; (o.roster || []).forEach(function (m) { (teams[m.team || "Ostatní"] = teams[m.team || "Ostatní"] || []).push(m); });
+  Object.keys(last).forEach(function (n) { if (!(o.roster || []).some(function (m) { return m.name === n; })) (teams["Noví"] = teams["Noví"] || []).push({ name: n }); });
+  var x = '<div class="src"><span class="pill">Kancelář botů</span> <span class="pill">poslední událost každého bota za 24 h</span></div>';
+  Object.keys(teams).forEach(function (t) {
+    x += "<h2>" + esc(t) + "</h2><div class='box'>" + teams[t].map(function (m) { var l = last[m.name]; return row((m.emoji ? esc(m.emoji) + " " : "") + "<b>" + esc(m.name) + "</b>" + (m.role ? ' <span class="zero">' + esc(m.role) + "</span>" : ""), l ? '<span class="pill ' + cl[l.ev] + '">' + ev[l.ev] + "</span> " + esc(l.msg) + ' <span class="zero">' + fmtS(l.ts) + "</span>" : '<span class="zero">dnes bez události</span>'); }).join("") + "</div>";
+  });
+  $("officebody").innerHTML = x;
+}
 /* ===== Reálný kapitál: přepínač 250/500 překreslí záložky botů (jen zobrazení) ===== */
 if (window.RC) { RC.onChange(function () { renderAll(); }); }
 /* ===== vykreslení snímku ===== */
@@ -367,6 +404,9 @@ function renderAll() {
   try { renderHD((data.bots || {}).hyperdesk); } catch (e) { $("hdbody").textContent = "chyba vykreslení"; }
   try { renderPP((data.bots || {}).polyprofile); } catch (e) { $("ppbody").textContent = "chyba vykreslení"; }
   try { renderAP((data.bots || {}).adaptivepoly); } catch (e) { $("apbody").textContent = "chyba vykreslení"; }
+  try { renderCH((data.bots || {}).carryh); } catch (e) { $("chbody").textContent = "chyba vykreslení"; }
+  try { renderBAND((data.bots || {}).apband); } catch (e) { $("bandbody").textContent = "chyba vykreslení"; }
+  try { renderOffice(data.office); } catch (e) { $("officebody").textContent = "chyba vykreslení"; }
   var b2 = data.books, s = $("src"); if (b2 && b2.tracker) { s.className = "src"; s.innerHTML = '<span class="pill acc">SNÍMEK z boxu</span> <span>tracker BTC kontroly k <b>' + fmtT(b2.tracker.updatedAt) + "</b> · BTC <b>" + (b2.tracker.btcPrice != null ? "$" + Math.round(b2.tracker.btcPrice).toLocaleString("cs-CZ") : "—") + "</b> (" + esc(b2.tracker.btcSource || "—") + ")</span>"; }
   var i = data.info; $("hdrline").textContent = i && i.live ? "LIVE: " + i.live : "";
 }
